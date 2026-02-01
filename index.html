@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 Monitoring Dashboard</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #4f46e5; /* Indigo 600 */
+            --accent-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border-color: #e2e8f0;
+            --offline-bg: #f8fafc;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: var(--card-bg);
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-status {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Grid Layout */
+        #cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Loading State */
+        #loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60vh;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            gap: 10px;
+        }
+        
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Card Styles */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .card.offline {
+            background: var(--offline-bg);
+            border-style: dashed;
+        }
+
+        .card.offline .value,
+        .card.offline .icon-box {
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+
+        /* When offline, ensure the badge is visible */
+        .card.offline .badge.offline {
+            display: inline-block;
+        }
+        .card.offline .badge.online {
+            display: none;
+        }
+        .card:not(.offline) .badge.offline {
+            display: none;
+        }
+        .card:not(.offline) .badge.online {
+            display: inline-block;
+        }
+
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: capitalize;
+        }
+
+        .card-menu {
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.1s;
+        }
+
+        .card-menu:hover {
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            flex-grow: 1;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .value-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+
+        .text-danger {
+            color: var(--danger) !important;
+        }
+
+        .unit {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-left: 4px;
+        }
+
+        .icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        /* Status Colors */
+        .status-on { color: var(--success); }
+        .status-off { color: var(--danger); }
+        
+        .bg-temp { background: #e0f2fe; color: #0284c7; }
+        .bg-level { background: #dbeafe; color: #2563eb; }
+        .bg-status { background: #dcfce7; color: #16a34a; }
+        
+        .bg-alert-high { background: #fee2e2; color: #dc2626; } /* Red for high temp */
+        .bg-alert-low { background: #fef3c7; color: #d97706; } /* Orange for low level */
+
+        .footer {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            align-items: center;
+        }
+
+        .footer-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .mac-address {
+            font-family: monospace;
+            opacity: 0.5;
+            font-size: 0.7rem;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        .badge.online { background: #d1fae5; color: #059669; }
+        .badge.offline { background: #f1f5f9; color: #64748b; }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .toast {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            min-width: 320px;
+            border-left: 4px solid var(--danger);
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-content {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .toast-msg {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .toast-close {
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .toast-close:hover {
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        /* Modal */
+        #modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        #modalContent {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 350px;
+            box-shadow: var(--shadow-md);
+            animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #modalContent h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: inherit;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        
+        .btn-cancel:hover {
+            background: var(--bg-color);
+        }
+
+        .btn-save {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: var(--accent-hover);
+        }
+
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>
+        <i class="ph-fill ph-circles-three-plus" style="color: var(--accent-color);"></i>
+        Dashboard
+    </h1>
+    <div class="header-status">
+        Live Monitoring
+    </div>
+</header>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <span>Connecting to devices...</span>
+</div>
+
+<div id="cards"></div>
+<div id="toast-container"></div>
+
+<div id="modal">
+  <div id="modalContent">
+    <h3>Edit Sensor</h3>
+    
+    <label for="editTitle">Display Name</label>
+    <input id="editTitle" placeholder="e.g. Main Tank Level" />
+    
+    <label for="editLimit">Alert Limit</label>
+    <input id="editLimit" type="number" placeholder="Enter threshold value" />
+    
+    <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAm3CWjohslzmA6P1TZsnrW2zhDw-reyCU",
+    authDomain: "ucicp4-monitor.firebaseapp.com",
+    databaseURL: "https://ucicp4-monitor-default-rtdb.firebaseio.com",
+    projectId: "ucicp4-monitor",
+    storageBucket: "ucicp4-monitor.firebasestorage.app",
+    messagingSenderId: "1031061269922",
+    appId: "1:1031061269922:web:839d1f5c0a8e26ce7996fb"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const cardsDiv = document.getElementById("cards");
+  const loadingDiv = document.getElementById("loading");
+  const toastContainer = document.getElementById("toast-container");
+  
+  let currentEditPath = "";
+  let activeAlerts = new Map();
+  let dismissedAlertKeys = new Set();
+  const OFFLINE_LIMIT = 5 * 60 * 1000; // 5 minutes
+
+  // Track if we need to sync alert status
+  // We use this to prevent endless loops where writing to DB triggers onValue again
+  let lastSentAlertValue = -1;
+
+  onValue(ref(db), snap => {
+    loadingDiv.style.display = 'none';
+    cardsDiv.innerHTML = "";
+    
+    const data = snap.val();
+    if (!data) return;
+
+    const alertCards = [];
+    const normalCards = [];
+    const now = Date.now();
+    const currentLoopAlerts = new Map();
+
+    for (const mac in data) {
+      if (mac === "Alert") continue; // SKIP the special Alert key
+
+      const last = data[mac].last_update || {};
+      const devices = data[mac].devices || {};
+
+      const lastUpdateMs = last.timestamp || 0;
+      const isOffline = lastUpdateMs && (now - lastUpdateMs > OFFLINE_LIMIT);
+      const timeAgoText = lastUpdateMs ? timeAgo(lastUpdateMs) : "Never";
+
+      for (const dev in devices) {
+        const sensorObj = devices[dev];
+        const type = Object.keys(sensorObj)[0];
+        const s = sensorObj[type];
+
+        const value = parseInt(s.value);
+        const limit = s.limit;
+        const title = s.title || type;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.setAttribute("data-ts", lastUpdateMs);
+        if (isOffline) card.classList.add("offline");
+
+        let displayValue = value;
+        let unit = "";
+        let iconClass = "ph-question";
+        let colorClass = "bg-level"; 
+
+        if (type === "temperature") {
+            displayValue = value;
+            unit = "°C";
+            iconClass = "ph-thermometer";
+            colorClass = "bg-temp";
+        } else if (type === "level") {
+            displayValue = value;
+            unit = "%";
+            iconClass = "ph-drop";
+            colorClass = "bg-level";
+        } else if (type === "status") {
+            displayValue = value ? "ON" : "OFF";
+            unit = "";
+            iconClass = value ? "ph-lightning" : "ph-power";
+            colorClass = value ? "bg-status" : "status-off";
+        }
+
+        let isAlert = false;
+        let alertMsg = "";
+        let valueColorClass = type === 'status' ? (value ? 'status-on' : 'status-off') : '';
+
+        if (type === "status" && value === 0) {
+           isAlert = true;
+           alertMsg = `${title} is OFF`;
+           colorClass = "bg-alert-high";
+           valueColorClass = "text-danger"; 
+        } else if (type === "temperature" && value > limit) {
+            isAlert = true;
+            alertMsg = `High Temp: ${value}°C`;
+            colorClass = "bg-alert-high";
+            valueColorClass = "text-danger"; 
+        } else if (type === "level" && value < limit) {
+             isAlert = true;
+             alertMsg = `Low Level: ${value}%`;
+             colorClass = "bg-alert-low";
+             valueColorClass = "text-danger"; 
+        }
+
+        // Alert Tracking
+        const alertKey = `${mac}_${dev}_${type}`;
+        if (isAlert && !isOffline) {
+            currentLoopAlerts.set(alertKey, { title, message: alertMsg });
+        }
+
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="card-title">${title}</span>
+            <i class="ph ph-dots-three-vertical card-menu" onclick="openEdit('${mac}/devices/${dev}/${type}')"></i>
+          </div>
+          
+          <div class="card-body">
+            <div class="value-container">
+                <div class="value ${valueColorClass}">
+                    ${displayValue}<span class="unit">${unit}</span>
+                </div>
+            </div>
+            <div class="icon-box ${colorClass}">
+                <i class="ph ${iconClass}"></i>
+            </div>
+          </div>
+
+          <div class="footer">
+            <div class="footer-left">
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <i class="ph ph-clock"></i> 
+                    <span class="time-ago-text">${timeAgoText}</span>
+                </div>
+                <!-- Added MAC Address -->
+                <div class="mac-address">${mac}</div>
+            </div>
+            <span class="badge online">Online</span>
+            <span class="badge offline">Offline</span>
+          </div>
+        `;
+
+        if (isAlert) alertCards.push(card);
+        else normalCards.push(card);
+      }
+    }
+
+    alertCards.forEach(c => cardsDiv.appendChild(c));
+    normalCards.forEach(c => cardsDiv.appendChild(c));
+
+    reconcileToasts(currentLoopAlerts);
+  });
+
+  setInterval(() => {
+    const cards = document.querySelectorAll('.card');
+    const now = Date.now();
+    cards.forEach(card => {
+        const ts = parseInt(card.getAttribute('data-ts'));
+        if (!ts) return;
+        const timeText = card.querySelector('.time-ago-text');
+        if (timeText) timeText.innerText = timeAgo(ts);
+        const isOffline = (now - ts) > OFFLINE_LIMIT;
+        if (isOffline && !card.classList.contains('offline')) card.classList.add('offline');
+        else if (!isOffline && card.classList.contains('offline')) card.classList.remove('offline');
+    });
+  }, 3000);
+
+  function reconcileToasts(currentAlerts) {
+      activeAlerts.forEach((val, key) => {
+          if (!currentAlerts.has(key)) {
+              removeToast(key);
+              dismissedAlertKeys.delete(key);
+          }
+      });
+
+      currentAlerts.forEach((details, key) => {
+          if (dismissedAlertKeys.has(key)) return;
+          if (activeAlerts.has(key)) return;
+          createToast(key, details.title, details.message);
+      });
+
+      activeAlerts = currentAlerts;
+      
+      // SYNC ALERT STATE BUTTON
+      syncGlobalAlertState();
+  }
+
+  // ** NEW: Calculate if we have any active, undismissed alerts **
+  function syncGlobalAlertState() {
+      // Logic: If there is at least one alert in `activeAlerts` that is NOT in `dismissedAlertKeys`
+      // Then Alert = 1, else Alert = 0
+      let hasVisibleAlert = false;
+      for (const key of activeAlerts.keys()) {
+          if (!dismissedAlertKeys.has(key)) {
+              hasVisibleAlert = true;
+              break;
+          }
+      }
+
+      const newValue = hasVisibleAlert ? 1 : 0;
+      
+      // Only write if changed to avoid unnecessary DB ops
+      if (newValue !== lastSentAlertValue) {
+          update(ref(db), { Alert: newValue });
+          lastSentAlertValue = newValue;
+      }
+  }
+
+  function createToast(key, title, message) {
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.id = `toast-${key}`;
+      toast.innerHTML = `
+        <i class="ph-fill ph-warning-circle" style="color: var(--danger); font-size: 24px;"></i>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-msg">${message}</div>
+        </div>
+        <i class="ph ph-x toast-close" onclick="dismissToast('${key}')"></i>
+      `;
+      toastContainer.appendChild(toast);
+  }
+
+  function removeToast(key) {
+      const toast = document.getElementById(`toast-${key}`);
+      if (toast) {
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 300);
+      }
+  }
+
+  window.dismissToast = (key) => {
+      dismissedAlertKeys.add(key);
+      removeToast(key);
+      
+      // Trigger sync immediately to potentially clear the 'Alert' flag
+      syncGlobalAlertState();
+  };
+
+  function timeAgo(dateParam) {
+    if (!dateParam) return "Never";
+    const date = typeof dateParam === 'object' ? dateParam : new Date(dateParam);
+    const today = new Date();
+    const seconds = Math.round((today - date) / 1000);
+    const minutes = Math.round(seconds / 60);
+
+    if (seconds < 5) return 'Just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return date.toLocaleDateString();
+  }
+
+  window.openEdit = path => {
+    currentEditPath = path;
+    const modal = document.getElementById("modal");
+    modal.style.display = "flex";
+    document.getElementById("editTitle").value = ""; 
+    document.getElementById("editLimit").value = ""; 
+    document.getElementById("editTitle").focus();
+  };
+
+  window.closeModal = () => {
+      document.getElementById("modal").style.display = "none";
+  };
+
+  window.saveEdit = () => {
+    const title = document.getElementById("editTitle").value;
+    const limit = document.getElementById("editLimit").value;
+
+    const updates = {};
+    if (title) updates.title = title;
+    if (limit) updates.limit = parseInt(limit);
+
+    if (Object.keys(updates).length > 0) {
+        update(ref(db, currentEditPath), updates);
+    }
+    
+    closeModal();
+  };
+
+  window.onclick = function(event) {
+    const modal = document.getElementById("modal");
+    if (event.target == modal) {
+        closeModal();
+    }
+  }
+</script>
+</body>
+</html>
