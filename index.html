@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ESP32 Monitoring Dashboard</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
@@ -19,7 +20,8 @@
             --card-bg: #ffffff;
             --text-primary: #1e293b;
             --text-secondary: #64748b;
-            --accent-color: #4f46e5; /* Indigo 600 */
+            --accent-color: #4f46e5;
+            /* Indigo 600 */
             --accent-hover: #4338ca;
             --success: #10b981;
             --danger: #ef4444;
@@ -89,7 +91,7 @@
             font-size: 1.2rem;
             gap: 10px;
         }
-        
+
         .spinner {
             width: 24px;
             height: 24px;
@@ -99,7 +101,11 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* Card Styles */
         .card {
@@ -135,12 +141,15 @@
         .card.offline .badge.offline {
             display: inline-block;
         }
+
         .card.offline .badge.online {
             display: none;
         }
+
         .card:not(.offline) .badge.offline {
             display: none;
         }
+
         .card:not(.offline) .badge.online {
             display: inline-block;
         }
@@ -216,15 +225,54 @@
         }
 
         /* Status Colors */
-        .status-on { color: var(--success); }
-        .status-off { color: var(--danger); }
-        
-        .bg-temp { background: #e0f2fe; color: #0284c7; }
-        .bg-level { background: #dbeafe; color: #2563eb; }
-        .bg-status { background: #dcfce7; color: #16a34a; }
-        
-        .bg-alert-high { background: #fee2e2; color: #dc2626; } /* Red for high temp */
-        .bg-alert-low { background: #fef3c7; color: #d97706; } /* Orange for low level */
+        .status-on {
+            color: var(--success);
+        }
+
+        .status-off {
+            color: var(--danger);
+        }
+
+        .status-backup {
+            color: #d97706;
+        }
+
+        /* Dark amber text for backup */
+
+        .bg-temp {
+            background: #e0f2fe;
+            color: #0284c7;
+        }
+
+        .bg-level {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .bg-status {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .bg-backup {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        /* Amber bg for backup */
+
+        .bg-alert-high {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* Red for high temp */
+        .bg-alert-low {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        /* Orange for low level */
 
         .footer {
             margin-top: 1.5rem;
@@ -257,8 +305,15 @@
             text-transform: uppercase;
         }
 
-        .badge.online { background: #d1fae5; color: #059669; }
-        .badge.offline { background: #f1f5f9; color: #64748b; }
+        .badge.online {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .badge.offline {
+            background: #f1f5f9;
+            color: #64748b;
+        }
 
         /* Toast Notifications */
         #toast-container {
@@ -286,10 +341,17 @@
             animation: slideIn 0.3s ease-out;
             position: relative;
         }
-        
+
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         .toast-content {
@@ -344,8 +406,15 @@
         }
 
         @keyframes popIn {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         #modalContent h3 {
@@ -396,7 +465,7 @@
             background: transparent;
             color: var(--text-secondary);
         }
-        
+
         .btn-cancel:hover {
             background: var(--bg-color);
         }
@@ -409,166 +478,187 @@
         .btn-save:hover {
             background: var(--accent-hover);
         }
-
     </style>
 </head>
 
 <body>
 
-<header>
-    <h1>
-        <i class="ph-fill ph-circles-three-plus" style="color: var(--accent-color);"></i>
-        Dashboard
-    </h1>
-    <div class="header-status">
-        Live Monitoring
+    <header>
+        <h1>
+            <i class="ph-fill ph-circles-three-plus" style="color: var(--accent-color);"></i>
+            Dashboard
+        </h1>
+        <div class="header-status">
+            Live Monitoring
+        </div>
+    </header>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <span>Connecting to devices...</span>
     </div>
-</header>
 
-<div id="loading">
-    <div class="spinner"></div>
-    <span>Connecting to devices...</span>
-</div>
+    <div id="cards"></div>
+    <div id="toast-container"></div>
 
-<div id="cards"></div>
-<div id="toast-container"></div>
+    <div id="modal">
+        <div id="modalContent">
+            <h3>Edit Sensor</h3>
 
-<div id="modal">
-  <div id="modalContent">
-    <h3>Edit Sensor</h3>
-    
-    <label for="editTitle">Display Name</label>
-    <input id="editTitle" placeholder="e.g. Main Tank Level" />
-    
-    <label for="editLimit">Alert Limit</label>
-    <input id="editLimit" type="number" placeholder="Enter threshold value" />
-    
-    <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+            <label for="editTitle">Display Name</label>
+            <input id="editTitle" placeholder="e.g. Main Tank Level" />
+
+            <label for="editLimit">Alert Limit</label>
+            <input id="editLimit" type="number" placeholder="Enter threshold value" />
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-  import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAm3CWjohslzmA6P1TZsnrW2zhDw-reyCU",
-    authDomain: "ucicp4-monitor.firebaseapp.com",
-    databaseURL: "https://ucicp4-monitor-default-rtdb.firebaseio.com",
-    projectId: "ucicp4-monitor",
-    storageBucket: "ucicp4-monitor.firebasestorage.app",
-    messagingSenderId: "1031061269922",
-    appId: "1:1031061269922:web:839d1f5c0a8e26ce7996fb"
-  };
+        const firebaseConfig = {
+            apiKey: "AIzaSyAm3CWjohslzmA6P1TZsnrW2zhDw-reyCU",
+            authDomain: "ucicp4-monitor.firebaseapp.com",
+            databaseURL: "https://ucicp4-monitor-default-rtdb.firebaseio.com",
+            projectId: "ucicp4-monitor",
+            storageBucket: "ucicp4-monitor.firebasestorage.app",
+            messagingSenderId: "1031061269922",
+            appId: "1:1031061269922:web:839d1f5c0a8e26ce7996fb"
+        };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-  const cardsDiv = document.getElementById("cards");
-  const loadingDiv = document.getElementById("loading");
-  const toastContainer = document.getElementById("toast-container");
-  
-  let currentEditPath = "";
-  let activeAlerts = new Map();
-  let dismissedAlertKeys = new Set();
-  const OFFLINE_LIMIT = 5 * 60 * 1000; // 5 minutes
+        // --- USER CONFIG ---
 
-  // Track if we need to sync alert status
-  // We use this to prevent endless loops where writing to DB triggers onValue again
-  let lastSentAlertValue = -1;
+        const cardsDiv = document.getElementById("cards");
+        const loadingDiv = document.getElementById("loading");
+        const toastContainer = document.getElementById("toast-container");
 
-  onValue(ref(db), snap => {
-    loadingDiv.style.display = 'none';
-    cardsDiv.innerHTML = "";
-    
-    const data = snap.val();
-    if (!data) return;
+        let currentEditPath = "";
+        let activeAlerts = new Map();
+        let dismissedAlertKeys = new Set();
+        const OFFLINE_LIMIT = 5 * 60 * 1000; // 5 minutes
+        let lastSentAlertValue = -1;
 
-    const alertCards = [];
-    const normalCards = [];
-    const now = Date.now();
-    const currentLoopAlerts = new Map();
+        onValue(ref(db), snap => {
+            loadingDiv.style.display = 'none';
+            cardsDiv.innerHTML = "";
 
-    for (const mac in data) {
-      if (mac === "Alert") continue; // SKIP the special Alert key
+            const data = snap.val();
+            if (!data) return;
 
-      const last = data[mac].last_update || {};
-      const devices = data[mac].devices || {};
+            const alertCards = [];
+            const normalCards = [];
+            const now = Date.now();
+            const currentLoopAlerts = new Map();
 
-      const lastUpdateMs = last.timestamp || 0;
-      const isOffline = lastUpdateMs && (now - lastUpdateMs > OFFLINE_LIMIT);
-      const timeAgoText = lastUpdateMs ? timeAgo(lastUpdateMs) : "Never";
+            for (const mac in data) {
+                if (mac === "Alert") continue;
 
-      for (const dev in devices) {
-        const sensorObj = devices[dev];
-        const type = Object.keys(sensorObj)[0];
-        const s = sensorObj[type];
+                const last = data[mac].last_update || {};
+                const devices = data[mac].devices || {};
 
-        const value = parseInt(s.value);
-        const limit = s.limit;
-        const title = s.title || type;
+                const lastUpdateMs = last.timestamp || 0;
+                // Note: We check offline status here for rendering, but we track transitions in checkOfflineStatus()
+                const isOffline = lastUpdateMs && (now - lastUpdateMs > OFFLINE_LIMIT);
+                const timeAgoText = lastUpdateMs ? timeAgo(lastUpdateMs) : "Never";
 
-        const card = document.createElement("div");
-        card.className = "card";
-        card.setAttribute("data-ts", lastUpdateMs);
-        if (isOffline) card.classList.add("offline");
+                for (const dev in devices) {
+                    const sensorObj = devices[dev];
+                    const type = Object.keys(sensorObj)[0];
+                    const s = sensorObj[type];
 
-        let displayValue = value;
-        let unit = "";
-        let iconClass = "ph-question";
-        let colorClass = "bg-level"; 
+                    const value = parseInt(s.value);
+                    const limit = s.limit;
+                    const title = s.title || type;
 
-        if (type === "temperature") {
-            displayValue = value;
-            unit = "°C";
-            iconClass = "ph-thermometer";
-            colorClass = "bg-temp";
-        } else if (type === "level") {
-            displayValue = value;
-            unit = "%";
-            iconClass = "ph-drop";
-            colorClass = "bg-level";
-        } else if (type === "status") {
-            displayValue = value ? "ON" : "OFF";
-            unit = "";
-            iconClass = value ? "ph-lightning" : "ph-power";
-            colorClass = value ? "bg-status" : "status-off";
-        }
+                    // ------------------------------------
 
-        let isAlert = false;
-        let alertMsg = "";
-        let valueColorClass = type === 'status' ? (value ? 'status-on' : 'status-off') : '';
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    card.setAttribute("data-ts", lastUpdateMs);
+                    // We add mac to dataset for the interval checker to use for logic if needed,
+                    // though the interval mostly uses data-ts property.
+                    card.setAttribute("data-mac", mac);
 
-        if (type === "status" && value === 0) {
-           isAlert = true;
-           alertMsg = `${title} is OFF`;
-           colorClass = "bg-alert-high";
-           valueColorClass = "text-danger"; 
-        } else if (type === "temperature" && value > limit) {
-            isAlert = true;
-            alertMsg = `High Temp: ${value}°C`;
-            colorClass = "bg-alert-high";
-            valueColorClass = "text-danger"; 
-        } else if (type === "level" && value < limit) {
-             isAlert = true;
-             alertMsg = `Low Level: ${value}%`;
-             colorClass = "bg-alert-low";
-             valueColorClass = "text-danger"; 
-        }
+                    if (isOffline) card.classList.add("offline");
 
-        // Alert Tracking
-        const alertKey = `${mac}_${dev}_${type}`;
-        if (isAlert && !isOffline) {
-            currentLoopAlerts.set(alertKey, { title, message: alertMsg });
-        }
+                    let displayValue = value;
+                    let unit = "";
+                    let iconClass = "ph-question";
+                    let colorClass = "bg-level";
 
-        card.innerHTML = `
+                    let isAlert = false;
+                    let alertMsg = "";
+                    let valueColorClass = "";
+
+                    if (type === "temperature") {
+                        displayValue = value;
+                        unit = "°C";
+                        iconClass = "ph-thermometer";
+                        colorClass = "bg-temp";
+
+                        if (value > limit) {
+                            isAlert = true;
+                            alertMsg = `High Temp: ${value}°C`;
+                            colorClass = "bg-alert-high";
+                            valueColorClass = "text-danger";
+                        }
+                    } else if (type === "level") {
+                        displayValue = value;
+                        unit = "%";
+                        iconClass = "ph-drop";
+                        colorClass = "bg-level";
+
+                        if (value < limit) {
+                            isAlert = true;
+                            alertMsg = `Low Level: ${value}%`;
+                            colorClass = "bg-alert-low";
+                            valueColorClass = "text-danger";
+                        }
+                    } else if (type === "status") {
+                        // Updated Status Logic
+                        if (value === 2) {
+                            displayValue = "Standby"; // CHANGED FROM Backup TO Standby
+                            unit = "";
+                            iconClass = "ph-lightning";
+                            colorClass = "bg-backup"; // Yellow
+                            valueColorClass = "status-backup"; // Dark Amber
+                        } else {
+                            displayValue = value ? "ON" : "OFF";
+                            unit = "";
+                            iconClass = value ? "ph-lightning" : "ph-power";
+                            colorClass = value ? "bg-status" : "status-off";
+
+                            if (value === 0) {
+                                isAlert = true;
+                                alertMsg = `${title} is OFF`;
+                                colorClass = "bg-alert-high";
+                                valueColorClass = "text-danger";
+                            } else {
+                                valueColorClass = "status-on";
+                            }
+                        }
+                    }
+
+                    const alertKey = `${mac}_${dev}_${type}`;
+                    if (isAlert && !isOffline) {
+                        currentLoopAlerts.set(alertKey, { title, message: alertMsg });
+                    }
+
+                    const safeTitle = title.replace(/'/g, "\\'");
+
+                    card.innerHTML = `
           <div class="card-header">
             <span class="card-title">${title}</span>
-            <i class="ph ph-dots-three-vertical card-menu" onclick="openEdit('${mac}/devices/${dev}/${type}')"></i>
+            <i class="ph ph-dots-three-vertical card-menu" onclick="openEdit('${mac}/devices/${dev}/${type}', '${safeTitle}', '${limit !== undefined ? limit : ''}')"></i>
           </div>
           
           <div class="card-body">
@@ -588,7 +678,6 @@
                     <i class="ph ph-clock"></i> 
                     <span class="time-ago-text">${timeAgoText}</span>
                 </div>
-                <!-- Added MAC Address -->
                 <div class="mac-address">${mac}</div>
             </div>
             <span class="badge online">Online</span>
@@ -596,77 +685,90 @@
           </div>
         `;
 
-        if (isAlert) alertCards.push(card);
-        else normalCards.push(card);
-      }
-    }
+                    if (isAlert) alertCards.push(card);
+                    else normalCards.push(card);
+                }
+            }
 
-    alertCards.forEach(c => cardsDiv.appendChild(c));
-    normalCards.forEach(c => cardsDiv.appendChild(c));
+            alertCards.forEach(c => cardsDiv.appendChild(c));
+            normalCards.forEach(c => cardsDiv.appendChild(c));
 
-    reconcileToasts(currentLoopAlerts);
-  });
+            reconcileToasts(currentLoopAlerts);
+        });
 
-  setInterval(() => {
-    const cards = document.querySelectorAll('.card');
-    const now = Date.now();
-    cards.forEach(card => {
-        const ts = parseInt(card.getAttribute('data-ts'));
-        if (!ts) return;
-        const timeText = card.querySelector('.time-ago-text');
-        if (timeText) timeText.innerText = timeAgo(ts);
-        const isOffline = (now - ts) > OFFLINE_LIMIT;
-        if (isOffline && !card.classList.contains('offline')) card.classList.add('offline');
-        else if (!isOffline && card.classList.contains('offline')) card.classList.remove('offline');
-    });
-  }, 3000);
+        // Check for Offline/Online transitions every 3s
+        setInterval(() => {
+            const cards = document.querySelectorAll('.card');
+            const now = Date.now();
 
-  function reconcileToasts(currentAlerts) {
-      activeAlerts.forEach((val, key) => {
-          if (!currentAlerts.has(key)) {
-              removeToast(key);
-              dismissedAlertKeys.delete(key);
-          }
-      });
+            // We iterate cards to update visual UI and check per-card offline status
+            // To allow "One MAC per event", we should probably track offline status by MAC, not by card.
+            // Since multiple cards share the same MAC, we only need to check one of them or cache the result.
+            // But logically, if MAC is offline, ALL its devices are offline.
 
-      currentAlerts.forEach((details, key) => {
-          if (dismissedAlertKeys.has(key)) return;
-          if (activeAlerts.has(key)) return;
-          createToast(key, details.title, details.message);
-      });
+            const uniqueMacsChecked = new Set();
 
-      activeAlerts = currentAlerts;
-      
-      // SYNC ALERT STATE BUTTON
-      syncGlobalAlertState();
-  }
+            cards.forEach(card => {
+                const ts = parseInt(card.getAttribute('data-ts'));
+                const mac = card.getAttribute('data-mac');
 
-  // ** NEW: Calculate if we have any active, undismissed alerts **
-  function syncGlobalAlertState() {
-      // Logic: If there is at least one alert in `activeAlerts` that is NOT in `dismissedAlertKeys`
-      // Then Alert = 1, else Alert = 0
-      let hasVisibleAlert = false;
-      for (const key of activeAlerts.keys()) {
-          if (!dismissedAlertKeys.has(key)) {
-              hasVisibleAlert = true;
-              break;
-          }
-      }
+                if (!ts || !mac) return;
 
-      const newValue = hasVisibleAlert ? 1 : 0;
-      
-      // Only write if changed to avoid unnecessary DB ops
-      if (newValue !== lastSentAlertValue) {
-          update(ref(db), { Alert: newValue });
-          lastSentAlertValue = newValue;
-      }
-  }
+                // Visual Update
+                const timeText = card.querySelector('.time-ago-text');
+                if (timeText) timeText.innerText = timeAgo(ts);
 
-  function createToast(key, title, message) {
-      const toast = document.createElement("div");
-      toast.className = "toast";
-      toast.id = `toast-${key}`;
-      toast.innerHTML = `
+                const isOfflineNow = (now - ts) > OFFLINE_LIMIT;
+
+                // UI Toggle
+                if (isOfflineNow && !card.classList.contains('offline')) {
+                    card.classList.add('offline');
+                } else if (!isOfflineNow && card.classList.contains('offline')) {
+                    card.classList.remove('offline');
+                }
+            });
+
+        }, 3000);
+
+        function reconcileToasts(currentAlerts) {
+            activeAlerts.forEach((val, key) => {
+                if (!currentAlerts.has(key)) {
+                    removeToast(key);
+                    dismissedAlertKeys.delete(key);
+                }
+            });
+
+            currentAlerts.forEach((details, key) => {
+                if (dismissedAlertKeys.has(key)) return;
+                if (activeAlerts.has(key)) return;
+                createToast(key, details.title, details.message);
+            });
+
+            activeAlerts = currentAlerts;
+            syncGlobalAlertState();
+        }
+
+        function syncGlobalAlertState() {
+            let hasVisibleAlert = false;
+            for (const key of activeAlerts.keys()) {
+                if (!dismissedAlertKeys.has(key)) {
+                    hasVisibleAlert = true;
+                    break;
+                }
+            }
+
+            const newValue = hasVisibleAlert ? 1 : 0;
+            if (newValue !== lastSentAlertValue) {
+                update(ref(db), { Alert: newValue });
+                lastSentAlertValue = newValue;
+            }
+        }
+
+        function createToast(key, title, message) {
+            const toast = document.createElement("div");
+            toast.className = "toast";
+            toast.id = `toast-${key}`;
+            toast.innerHTML = `
         <i class="ph-fill ph-warning-circle" style="color: var(--danger); font-size: 24px;"></i>
         <div class="toast-content">
             <div class="toast-title">${title}</div>
@@ -674,76 +776,77 @@
         </div>
         <i class="ph ph-x toast-close" onclick="dismissToast('${key}')"></i>
       `;
-      toastContainer.appendChild(toast);
-  }
+            toastContainer.appendChild(toast);
+        }
 
-  function removeToast(key) {
-      const toast = document.getElementById(`toast-${key}`);
-      if (toast) {
-          toast.style.opacity = '0';
-          setTimeout(() => toast.remove(), 300);
-      }
-  }
+        function removeToast(key) {
+            const toast = document.getElementById(`toast-${key}`);
+            if (toast) {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
 
-  window.dismissToast = (key) => {
-      dismissedAlertKeys.add(key);
-      removeToast(key);
-      
-      // Trigger sync immediately to potentially clear the 'Alert' flag
-      syncGlobalAlertState();
-  };
+        window.dismissToast = (key) => {
+            dismissedAlertKeys.add(key);
+            removeToast(key);
+            syncGlobalAlertState();
+        };
 
-  function timeAgo(dateParam) {
-    if (!dateParam) return "Never";
-    const date = typeof dateParam === 'object' ? dateParam : new Date(dateParam);
-    const today = new Date();
-    const seconds = Math.round((today - date) / 1000);
-    const minutes = Math.round(seconds / 60);
+        function timeAgo(dateParam) {
+            if (!dateParam) return "Never";
+            const date = typeof dateParam === 'object' ? dateParam : new Date(dateParam);
+            const today = new Date();
+            const seconds = Math.round((today - date) / 1000);
+            const minutes = Math.round(seconds / 60);
 
-    if (seconds < 5) return 'Just now';
-    if (seconds < 60) return `${seconds}s ago`;
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.round(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return date.toLocaleDateString();
-  }
+            if (seconds < 5) return 'Just now';
+            if (seconds < 60) return `${seconds}s ago`;
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.round(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.round(hours / 24);
+            if (days < 30) return `${days}d ago`;
+            return date.toLocaleDateString();
+        }
 
-  window.openEdit = path => {
-    currentEditPath = path;
-    const modal = document.getElementById("modal");
-    modal.style.display = "flex";
-    document.getElementById("editTitle").value = ""; 
-    document.getElementById("editLimit").value = ""; 
-    document.getElementById("editTitle").focus();
-  };
+        window.openEdit = (path, currentTitle, currentLimit) => {
+            currentEditPath = path;
+            const modal = document.getElementById("modal");
+            modal.style.display = "flex";
 
-  window.closeModal = () => {
-      document.getElementById("modal").style.display = "none";
-  };
+            document.getElementById("editTitle").value = currentTitle || "";
+            document.getElementById("editLimit").value = currentLimit || "";
 
-  window.saveEdit = () => {
-    const title = document.getElementById("editTitle").value;
-    const limit = document.getElementById("editLimit").value;
+            document.getElementById("editTitle").focus();
+        };
 
-    const updates = {};
-    if (title) updates.title = title;
-    if (limit) updates.limit = parseInt(limit);
+        window.closeModal = () => {
+            document.getElementById("modal").style.display = "none";
+        };
 
-    if (Object.keys(updates).length > 0) {
-        update(ref(db, currentEditPath), updates);
-    }
-    
-    closeModal();
-  };
+        window.saveEdit = () => {
+            const title = document.getElementById("editTitle").value;
+            const limit = document.getElementById("editLimit").value;
 
-  window.onclick = function(event) {
-    const modal = document.getElementById("modal");
-    if (event.target == modal) {
-        closeModal();
-    }
-  }
-</script>
+            const updates = {};
+            if (title) updates.title = title;
+            if (limit) updates.limit = parseInt(limit);
+
+            if (Object.keys(updates).length > 0) {
+                update(ref(db, currentEditPath), updates);
+            }
+
+            closeModal();
+        };
+
+        window.onclick = function (event) {
+            const modal = document.getElementById("modal");
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
 </body>
+
 </html>
